@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEDAR — Fast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EEF0EA;
+    --panel: #F8F9F5;
+    --ink: #1E2A24;
+    --ink-soft: #4B5A52;
+    --line: #D6DBCF;
+    --cedar: #9A4B32;
+    --cedar-dark: #7A3A26;
+    --teal: #3E6B63;
+    --teal-soft: #E4EDEA;
+    --amber: #B4812E;
+    --shadow: 0 1px 2px rgba(30,42,36,0.06), 0 4px 14px rgba(30,42,36,0.06);
+    --radius: 10px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection{ background: var(--cedar); color: white; }
+
+  header{
+    position: relative;
+    background: linear-gradient(180deg, #20302A 0%, #1B2723 100%);
+    color: #F3F5F0;
+    padding: 28px 32px 22px;
+    overflow: hidden;
+  }
+  header::before{
+    content:"";
+    position:absolute; right:-60px; top:-60px;
+    width:280px; height:280px; border-radius:50%;
+    border: 1px solid rgba(243,245,240,0.06);
+    box-shadow:
+      0 0 0 22px rgba(243,245,240,0.045),
+      0 0 0 44px rgba(243,245,240,0.035),
+      0 0 0 66px rgba(243,245,240,0.025);
+  }
+  .header-inner{ position:relative; max-width: 1280px; margin:0 auto; display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  .brand{ display:flex; align-items:baseline; gap:12px; }
+  .brand h1{ font-family:'Zilla Slab', serif; font-weight:700; font-size:28px; margin:0; letter-spacing:0.5px; }
+  .brand .tag{ font-size:13px; color:#B9CFC5; font-family:'IBM Plex Mono', monospace; }
+  header p.sub{ margin: 6px 0 0; color:#C7D3CB; font-size:14.5px; max-width:640px; }
+  .stat-pill{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    background: rgba(243,245,240,0.08); border:1px solid rgba(243,245,240,0.14);
+    padding: 6px 12px; border-radius: 999px; color:#DCE7E1;
+  }
+
+  .view-tabs{ display:flex; gap:4px; max-width:1280px; margin: 16px auto 0; padding: 0 32px; position:relative; }
+  .view-tabs button{
+    font-family:'IBM Plex Mono',monospace; font-size:13px; padding:8px 16px; border-radius: 8px 8px 0 0;
+    border:1px solid rgba(243,245,240,0.18); border-bottom:none; background: rgba(243,245,240,0.06); color:#C7D3CB; cursor:pointer;
+  }
+  .view-tabs button.active{ background: var(--bg); color: var(--ink); font-weight:600; }
+
+  .layout{
+    max-width: 1280px; margin: 0 auto; padding: 22px 32px 60px;
+    display:grid; grid-template-columns: 270px 1fr; gap: 24px;
+    align-items:start;
+  }
+  @media (max-width: 860px){ .layout{ grid-template-columns: 1fr; } }
+
+  .sidebar{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 18px; position: sticky; top: 18px; box-shadow: var(--shadow); max-height: calc(100vh - 36px); overflow-y:auto;
+  }
+  .search-box{ position:relative; margin-bottom:16px; }
+  .search-box input{
+    width:100%; padding: 10px 12px 10px 34px; border-radius:8px; border:1px solid var(--line);
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink);
+  }
+  .search-box input:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+  .search-box svg{ position:absolute; left:10px; top:11px; opacity:0.55; }
+
+  .filter-group{ margin-bottom: 16px; padding-bottom:14px; border-bottom: 1px dashed var(--line); }
+  .filter-group:last-child{ border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .filter-group h3{
+    font-size:11.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--ink-soft);
+    margin: 0 0 10px; font-weight:600; display:flex; justify-content:space-between;
+  }
+  .filter-group h3 span.n{ font-family:'IBM Plex Mono',monospace; opacity:0.6; text-transform:none; letter-spacing:0; }
+  .chip-list{ display:flex; flex-wrap:wrap; gap:6px; max-height:150px; overflow-y:auto; }
+  .chip{
+    font-size:12px; padding:5px 9px; border-radius:999px; border:1px solid var(--line);
+    background:#fff; color:var(--ink-soft); cursor:pointer; font-family:'IBM Plex Mono',monospace;
+    transition: all .12s ease; white-space:nowrap;
+  }
+  .chip:hover{ border-color: var(--cedar); color: var(--cedar-dark); }
+  .chip.active{ background: var(--cedar); border-color:var(--cedar); color:#fff; }
+
+  .group-toggle{ display:flex; gap:6px; margin-bottom:16px; }
+  .group-toggle button{
+    flex:1; padding:8px 6px; font-size:12.5px; border-radius:7px; border:1px solid var(--line);
+    background:#fff; cursor:pointer; font-family:inherit; color:var(--ink-soft);
+  }
+  .group-toggle button.active{ background: var(--teal-soft); border-color:var(--teal); color:var(--teal); font-weight:600; }
+
+  .clear-link{ font-size:12.5px; color:var(--cedar-dark); cursor:pointer; text-decoration:underline; }
+
+  .results-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  .results-count{ font-size:14px; color:var(--ink-soft); }
+  .results-count b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; }
+  select#sortSel{ font-family:inherit; font-size:13px; padding:6px 8px; border-radius:7px; border:1px solid var(--line); background:#fff; }
+
+  .ref-group{ margin-bottom: 22px; }
+  .ref-group-head{
+    font-size:12.5px; color: var(--ink-soft); font-family:'IBM Plex Mono',monospace;
+    margin: 0 0 8px 2px; display:flex; gap:8px; align-items:center;
+  }
+  .ref-group-head .line{ flex:1; height:1px; background: var(--line); }
+  .ref-group-head b{ color: var(--ink); }
+
+  .card{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; margin-bottom: 10px; box-shadow: var(--shadow); cursor:pointer;
+    transition: border-color .12s ease;
+  }
+  .card:hover{ border-color: var(--teal); }
+  .card-top{ display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }
+  .card h4{ margin:0 0 4px; font-family:'Zilla Slab', serif; font-size:16.5px; font-weight:600; line-height:1.35; }
+  .card .desc{ color: var(--ink-soft); font-size:13.5px; line-height:1.5; margin: 4px 0 10px; }
+  .card .ref-line{ font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-bottom:6px; }
+  .tag-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:4px; }
+  .tag{ font-size:11.5px; padding:3px 8px; border-radius:6px; font-family:'IBM Plex Mono',monospace; }
+  .tag.host{ background:#EAF1E7; color:#3D6647; }
+  .tag.microbe{ background:#F3E7EA; color:#8A3B52; }
+  .tag.amr{ background:#EDE6F5; color:#5B3E8A; }
+  .tag.geo{ background:#EAF0F5; color:#365A7A; }
+  .or-badge{ text-align:right; flex-shrink:0; min-width:100px; }
+  .or-badge .val{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:18px; color: var(--teal); }
+  .or-badge .ci{ font-size:11px; color: var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .or-badge.na .val{ color: var(--ink-soft); font-size:14px; }
+
+  .empty{ text-align:center; padding: 60px 20px; color: var(--ink-soft); }
+  .empty .ring{
+    width:64px; height:64px; margin:0 auto 14px; border-radius:50%; border:2px solid var(--line);
+    box-shadow: 0 0 0 8px var(--bg), inset 0 0 0 10px var(--panel), inset 0 0 0 18px var(--line);
+  }
+
+  .overlay{
+    position:fixed; inset:0; background: rgba(20,28,24,0.45); display:none;
+    align-items:flex-start; justify-content:center; padding: 40px 16px; overflow-y:auto; z-index: 50;
+  }
+  .overlay.open{ display:flex; }
+  .modal{
+    background:#fff; border-radius: 14px; max-width: 660px; width:100%; padding: 28px 28px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .modal h2{ font-family:'Zilla Slab',serif; font-size:21px; margin: 4px 0 10px; }
+  .modal .close{ float:right; cursor:pointer; font-size:20px; color:var(--ink-soft); background:none; border:none; }
+  .modal .field-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin-top:16px; font-size:13.5px; }
+  .modal .field-grid .fk{ color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px; }
+  .modal .field-grid .fv{ font-family:'IBM Plex Mono',monospace; }
+  .modal .desc-block{ margin-top:14px; font-size:14px; line-height:1.6; color: var(--ink); }
+  .modal a.doi{ font-size:13px; color: var(--teal); }
+  .modal-meta{ font-size:12px; color:var(--ink-soft); margin-top:18px; padding-top:12px; border-top:1px dashed var(--line); }
+
+  /* Reference list view */
+  .rcard{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; margin-bottom: 10px; box-shadow: var(--shadow); cursor:pointer;
+  }
+  .rcard:hover{ border-color: var(--teal); }
+  .rcard h4{ margin:0 0 6px; font-family:'Zilla Slab', serif; font-size:16px; font-weight:600; line-height:1.4; }
+  .rcard .meta{ font-size:12.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+
+  footer{ text-align:center; padding: 30px; color: var(--ink-soft); font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand"><h1>CEDAR</h1><span class="tag">// fast build</span></div>
+    <span class="stat-pill" id="loadStat">loading timber…</span>
+  </div>
+  <p class="sub">Collection of Epidemiologically Derived Associations with Resistance — antimicrobial resistance factors from the agri-food literature. Every filter runs in your browser, so results update instantly.</p>
+  <div class="view-tabs">
+    <button id="tabFactors" class="active" data-view="factors">Factors</button>
+    <button id="tabRefs" data-view="references">References</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="search-box">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4B5A52" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" type="text" placeholder="Search titles, descriptions…" autocomplete="off">
+    </div>
+
+    <div class="group-toggle" id="groupToggleWrap">
+      <button id="groupByRef" data-mode="reference">Group by reference</button>
+      <button id="groupByNone" class="active" data-mode="none">Flat list</button>
+    </div>
+
+    <div class="filter-group"><h3>Host <span class="n" id="hostN"></span></h3><div class="chip-list" id="hostChips"></div></div>
+    <div class="filter-group"><h3>Microbe <span class="n" id="microbeN"></span></h3><div class="chip-list" id="microbeChips"></div></div>
+    <div class="filter-group"><h3>Resistance class <span class="n" id="resN"></span></h3><div class="chip-list" id="resChips"></div></div>
+    <div class="filter-group"><h3>Country <span class="n" id="countryN"></span></h3><div class="chip-list" id="countryChips"></div></div>
+    <div class="filter-group"><h3>Study design <span class="n" id="designN"></span></h3><div class="chip-list" id="designChips"></div></div>
+    <div class="filter-group"><span class="clear-link" id="clearAll">Clear all filters</span></div>
+  </aside>
+
+  <main>
+    <div class="results-head">
+      <div class="results-count"><b id="resultCount">0</b> <span id="resultLabel">factors</span> found</div>
+      <select id="sortSel">
+        <option value="relevance">Sort: relevance</option>
+        <option value="or_desc">Sort: odds ratio (high → low)</option>
+        <option value="or_asc">Sort: odds ratio (low → high)</option>
+        <option value="title">Sort: title (A–Z)</option>
+      </select>
+    </div>
+    <div id="results"></div>
+  </main>
+</div>
+
+<footer>Fast rebuild of the CEDAR browse/query interface, built on the real CEDAR export schema. Original: <a href="https://cedar.azurewebsites.net" style="color:inherit;">cedar.azurewebsites.net</a>, maintained by the iAM-AMR project.</footer>
+
+<div class="overlay" id="overlay"><div class="modal" id="modalContent"></div></div>
+
+<script>
+let ALL = [];
+let activeFilters = { host: null, microbe: null, res: null, country: null, design: null };
+let groupMode = 'none';
+let currentView = 'factors';
+
+function fieldSafe(v){ return (v===undefined||v===null||v==='') ? '—' : v; }
+function resultFormat(f){
+  if(f.contable_a!==null && f.contable_a!==undefined && f.contable_a!=='') return 'Contingency Table';
+  if(f.prevtable_a!==null && f.prevtable_a!==undefined && f.prevtable_a!=='') return 'Prevalence Table';
+  return null;
+}
+
+async function loadData(){
+  const res = await fetch('data/factors.json');
+  const json = await res.json();
+  ALL = json.factors || [];
+  document.getElementById('loadStat').textContent = ALL.length.toLocaleString() + ' factors · ' + uniqueSorted('ref_bibtex_key').length.toLocaleString() + ' references';
+  buildFilterChips();
+  render();
+}
+
+function uniqueSorted(field){
+  const s = new Set();
+  ALL.forEach(f => { if(f[field]) s.add(f[field]); });
+  return Array.from(s).sort();
+}
+function topN(field, n){
+  const counts = {};
+  ALL.forEach(f => { if(f[field]) counts[f[field]] = (counts[f[field]]||0)+1; });
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,n).map(x=>x[0]);
+}
+
+function buildFilterChips(){
+  mkChips('hostChips', topN('host_level_01', 14), 'host', 'hostN');
+  mkChips('microbeChips', topN('microbe_level_01', 14), 'microbe', 'microbeN');
+  mkChips('resChips', topN('resistance_class', 14), 'res', 'resN');
+  mkChips('countryChips', topN('country', 14), 'country', 'countryN');
+  mkChips('designChips', topN('study_design', 10), 'design', 'designN');
+}
+
+function mkChips(containerId, values, key, countId){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  document.getElementById(countId).textContent = '(' + values.length + ')';
+  values.forEach(v => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = v;
+    chip.onclick = () => {
+      activeFilters[key] = (activeFilters[key] === v) ? null : v;
+      render();
+    };
+    if(activeFilters[key] === v) chip.classList.add('active');
+    el.appendChild(chip);
+  });
+}
+
+function matches(f, q){
+  if(activeFilters.host && f.host_level_01 !== activeFilters.host) return false;
+  if(activeFilters.microbe && f.microbe_level_01 !== activeFilters.microbe) return false;
+  if(activeFilters.res && f.resistance_class !== activeFilters.res) return false;
+  if(activeFilters.country && f.country !== activeFilters.country) return false;
+  if(activeFilters.design && f.study_design !== activeFilters.design) return false;
+  if(q){
+    const hay = [f.factor_title, f.factor_description, f.ref_title, f.host_level_01, f.host_level_02,
+                 f.microbe_level_01, f.microbe_level_02, f.resistance_class, f.resistance, f.ref_bibtex_key]
+      .filter(Boolean).join(' ').toLowerCase();
+    if(!hay.includes(q.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function sortRows(rows){
+  const mode = document.getElementById('sortSel').value;
+  const orOf = f => (f.odds_ratio===undefined || f.odds_ratio===null || f.odds_ratio==='') ? null : parseFloat(f.odds_ratio);
+  if(mode === 'or_desc') return rows.slice().sort((a,b)=> (orOf(b) ?? -Infinity) - (orOf(a) ?? -Infinity));
+  if(mode === 'or_asc') return rows.slice().sort((a,b)=> (orOf(a) ?? Infinity) - (orOf(b) ?? Infinity));
+  if(mode === 'title') return rows.slice().sort((a,b)=> (a.factor_title||'').localeCompare(b.factor_title||''));
+  return rows;
+}
+
+function orBadge(f){
+  const or = f.odds_ratio;
+  if(or===undefined||or===null||or===''){
+    return `<div class="or-badge na"><div class="val">no OR</div></div>`;
+  }
+  const lo = fieldSafe(f.odds_ratio_lo), up = fieldSafe(f.odds_ratio_up);
+  return `<div class="or-badge"><div class="val">${Number(or).toFixed(2)}</div><div class="ci">CI ${lo}–${up}</div></div>`;
+}
+
+function cardHTML(f, idx){
+  const fmt = resultFormat(f);
+  return `
+  <div class="card" data-idx="${idx}">
+    <div class="card-top">
+      <div>
+        <div class="ref-line">${fieldSafe(f.ref_bibtex_key)}${f.country ? ' · '+f.country : ''}</div>
+        <h4>${fieldSafe(f.factor_title)}</h4>
+        <div class="tag-row">
+          ${f.host_level_01 ? `<span class="tag host">${f.host_level_01}${f.host_level_02 ? ' · '+f.host_level_02:''}</span>`:''}
+          ${f.microbe_level_01 ? `<span class="tag microbe">${f.microbe_level_01} ${f.microbe_level_02||''}</span>`:''}
+          ${f.resistance_class ? `<span class="tag amr">${f.resistance_class}</span>`:''}
+        </div>
+      </div>
+      ${orBadge(f)}
+    </div>
+    <p class="desc">${(f.factor_description||'').slice(0,180)}${(f.factor_description||'').length>180?'…':''}</p>
+  </div>`;
+}
+
+function render(){
+  buildFilterChips();
+  if(currentView === 'references'){ renderReferences(); return; }
+
+  const q = document.getElementById('searchInput').value.trim();
+  let rows = ALL.filter(f => matches(f, q));
+  rows = sortRows(rows);
+  document.getElementById('resultCount').textContent = rows.length.toLocaleString();
+  document.getElementById('resultLabel').textContent = 'factors';
+
+  const container = document.getElementById('results');
+  if(rows.length === 0){
+    container.innerHTML = `<div class="empty"><div class="ring"></div>No factors match these filters.<br>Try clearing a filter or broadening your search.</div>`;
+    return;
+  }
+
+  if(groupMode === 'reference'){
+    const groups = {};
+    rows.forEach(f => {
+      const key = f.ref_bibtex_key || f.ref_rwid || 'Unknown reference';
+      if(!groups[key]) groups[key] = [];
+      groups[key].push(f);
+    });
+    container.innerHTML = Object.entries(groups).map(([ref, items]) => `
+      <div class="ref-group">
+        <div class="ref-group-head"><b>${ref}</b> · ${items.length} factor${items.length>1?'s':''}<span class="line"></span></div>
+        ${items.map(f => cardHTML(f, ALL.indexOf(f))).join('')}
+      </div>
+    `).join('');
+  } else {
+    container.innerHTML = rows.slice(0, 400).map(f => cardHTML(f, ALL.indexOf(f))).join('');
+    if(rows.length > 400){
+      container.innerHTML += `<div class="empty" style="padding:20px;">Showing first 400 of ${rows.length.toLocaleString()} — narrow with search or filters to see more precisely.</div>`;
+    }
+  }
+
+  container.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => openModal(ALL[parseInt(card.dataset.idx)]));
+  });
+}
+
+function renderReferences(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const refs = {};
+  ALL.forEach(f => {
+    if(activeFilters.host && f.host_level_01 !== activeFilters.host) return;
+    if(activeFilters.microbe && f.microbe_level_01 !== activeFilters.microbe) return;
+    if(activeFilters.res && f.resistance_class !== activeFilters.res) return;
+    if(activeFilters.country && f.country !== activeFilters.country) return;
+    if(activeFilters.design && f.study_design !== activeFilters.design) return;
+    const key = f.ref_bibtex_key || f.ref_rwid || f.id_reference;
+    if(!refs[key]) refs[key] = { title: f.ref_title, bibtex: f.ref_bibtex_key, country: f.country,
+      design: f.study_design, doi: f.ref_doi, rwid: f.ref_rwid, count: 0 };
+    refs[key].count++;
+  });
+  let list = Object.values(refs);
+  if(q){
+    list = list.filter(r => [r.title, r.bibtex, r.country].filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  list.sort((a,b) => (a.bibtex||'').localeCompare(b.bibtex||''));
+
+  document.getElementById('resultCount').textContent = list.length.toLocaleString();
+  document.getElementById('resultLabel').textContent = 'references';
+
+  const container = document.getElementById('results');
+  if(list.length === 0){
+    container.innerHTML = `<div class="empty"><div class="ring"></div>No references match these filters.</div>`;
+    return;
+  }
+  container.innerHTML = list.slice(0,400).map(r => `
+    <div class="rcard" data-bibtex="${r.bibtex}">
+      <h4>${fieldSafe(r.title)}</h4>
+      <div class="meta">${fieldSafe(r.bibtex)} · ${fieldSafe(r.country)} · ${fieldSafe(r.design)} · ${r.count} factor${r.count>1?'s':''}${r.doi ? ' · doi:'+r.doi : ''}</div>
+    </div>
+  `).join('');
+  if(list.length > 400){
+    container.innerHTML += `<div class="empty" style="padding:20px;">Showing first 400 of ${list.length.toLocaleString()} references.</div>`;
+  }
+  container.querySelectorAll('.rcard').forEach(card => {
+    card.addEventListener('click', () => {
+      currentView = 'factors';
+      document.getElementById('tabFactors').classList.add('active');
+      document.getElementById('tabRefs').classList.remove('active');
+      document.getElementById('groupToggleWrap').style.display = '';
+      document.getElementById('searchInput').value = card.dataset.bibtex;
+      render();
+    });
+  });
+}
+
+function openModal(f){
+  const doiLink = f.ref_doi ? `<a class="doi" href="https://doi.org/${f.ref_doi}" target="_blank" rel="noopener">doi.org/${f.ref_doi} →</a>` : '';
+  document.getElementById('modalContent').innerHTML = `
+    <button class="close" onclick="closeModal()">×</button>
+    <h2>${fieldSafe(f.factor_title)}</h2>
+    <div class="tag-row">
+      ${f.host_level_01 ? `<span class="tag host">${f.host_level_01}${f.host_level_02 ? ' · '+f.host_level_02:''}</span>`:''}
+      ${f.microbe_level_01 ? `<span class="tag microbe">${f.microbe_level_01} ${f.microbe_level_02||''}</span>`:''}
+      ${f.resistance_class ? `<span class="tag amr">${f.resistance_class}</span>`:''}
+      ${f.country ? `<span class="tag geo">${f.country}</span>`:''}
+    </div>
+    <div class="desc-block">${fieldSafe(f.factor_description)}</div>
+    <div class="field-grid">
+      <div><div class="fk">Reference</div><div class="fv">${fieldSafe(f.ref_title)}</div></div>
+      <div><div class="fk">Bibtex key</div><div class="fv">${fieldSafe(f.ref_bibtex_key)}</div></div>
+      <div><div class="fk">Factor group</div><div class="fv">${fieldSafe(f.factor_group)}</div></div>
+      <div><div class="fk">Comparator group</div><div class="fv">${fieldSafe(f.comparator_group)}</div></div>
+      <div><div class="fk">Stage (allocate)</div><div class="fv">${fieldSafe(f.stage_allocate)}</div></div>
+      <div><div class="fk">Stage (observe)</div><div class="fv">${fieldSafe(f.stage_observe)}</div></div>
+      <div><div class="fk">Resistance</div><div class="fv">${fieldSafe(f.resistance)}</div></div>
+      <div><div class="fk">Study design</div><div class="fv">${fieldSafe(f.study_design)}</div></div>
+      <div><div class="fk">Odds ratio</div><div class="fv">${fieldSafe(f.odds_ratio)} (${fieldSafe(f.odds_ratio_lo)}–${fieldSafe(f.odds_ratio_up)}, ${fieldSafe(f.odds_ratio_confidence)}% CI)</div></div>
+      <div><div class="fk">Significance</div><div class="fv">${fieldSafe(f.odds_ratio_sig)}</div></div>
+      <div><div class="fk">n exposed / referent</div><div class="fv">${fieldSafe(f.table_n_exp)} / ${fieldSafe(f.table_n_ref)}</div></div>
+      <div><div class="fk">Result format</div><div class="fv">${fieldSafe(resultFormat(f))}</div></div>
+    </div>
+    <div class="modal-meta">Reference ID ${fieldSafe(f.id_reference)} · Factor ID ${fieldSafe(f.id_factor)} ${f.ref_rwid ? ' · RWID '+f.ref_rwid : ''} ${doiLink ? ' · '+doiLink : ''}</div>
+  `;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('overlay').addEventListener('click', (e) => { if(e.target.id==='overlay') closeModal(); });
+document.addEventListener('keydown', (e) => { if(e.key==='Escape') closeModal(); });
+
+document.getElementById('searchInput').addEventListener('input', render);
+document.getElementById('sortSel').addEventListener('change', render);
+document.getElementById('clearAll').addEventListener('click', () => {
+  activeFilters = { host:null, microbe:null, res:null, country:null, design:null };
+  document.getElementById('searchInput').value = '';
+  render();
+});
+document.getElementById('groupByRef').addEventListener('click', () => {
+  groupMode = 'reference';
+  document.getElementById('groupByRef').classList.add('active');
+  document.getElementById('groupByNone').classList.remove('active');
+  render();
+});
+document.getElementById('groupByNone').addEventListener('click', () => {
+  groupMode = 'none';
+  document.getElementById('groupByNone').classList.add('active');
+  document.getElementById('groupByRef').classList.remove('active');
+  render();
+});
+document.getElementById('tabFactors').addEventListener('click', () => {
+  currentView = 'factors';
+  document.getElementById('tabFactors').classList.add('active');
+  document.getElementById('tabRefs').classList.remove('active');
+  document.getElementById('groupToggleWrap').style.display = '';
+  document.getElementById('sortSel').style.display = '';
+  render();
+});
+document.getElementById('tabRefs').addEventListener('click', () => {
+  currentView = 'references';
+  document.getElementById('tabRefs').classList.add('active');
+  document.getElementById('tabFactors').classList.remove('active');
+  document.getElementById('groupToggleWrap').style.display = 'none';
+  document.getElementById('sortSel').style.display = 'none';
+  render();
+});
+
+loadData();
+</script>
+</body>
+</html>
