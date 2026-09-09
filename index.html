@@ -246,7 +246,7 @@ function resultFormat(f){
 }
 
 async function loadData(){
-  const res = await fetch('data/factors.json');
+  const res = await fetch('Data/factors.json');
   const json = await res.json();
   ALL = json.factors || [];
   document.getElementById('loadStat').textContent = ALL.length.toLocaleString() + ' factors · ' + uniqueSorted('ref_bibtex_key').length.toLocaleString() + ' references';
