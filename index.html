@@ -114,6 +114,12 @@
   .results-count{ font-size:14px; color:var(--ink-soft); }
   .results-count b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; }
   select#sortSel{ font-family:inherit; font-size:13px; padding:6px 8px; border-radius:7px; border:1px solid var(--line); background:#fff; }
+  .export-btn{
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; padding:7px 12px; border-radius:7px;
+    border:1px solid var(--cedar); background:#fff; color:var(--cedar-dark); cursor:pointer; white-space:nowrap;
+    transition: all .12s ease;
+  }
+  .export-btn:hover{ background: var(--cedar); color:#fff; }
 
   .ref-group{ margin-bottom: 22px; }
   .ref-group-head{
@@ -217,12 +223,15 @@
   <main>
     <div class="results-head">
       <div class="results-count"><b id="resultCount">0</b> <span id="resultLabel">factors</span> found</div>
-      <select id="sortSel">
-        <option value="relevance">Sort: relevance</option>
-        <option value="or_desc">Sort: odds ratio (high → low)</option>
-        <option value="or_asc">Sort: odds ratio (low → high)</option>
-        <option value="title">Sort: title (A–Z)</option>
-      </select>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="sortSel">
+          <option value="relevance">Sort: relevance</option>
+          <option value="or_desc">Sort: odds ratio (high → low)</option>
+          <option value="or_asc">Sort: odds ratio (low → high)</option>
+          <option value="title">Sort: title (A–Z)</option>
+        </select>
+        <button id="exportCsvBtn" class="export-btn">⬇ Export CSV</button>
+      </div>
     </div>
     <div id="results"></div>
   </main>
@@ -237,6 +246,7 @@ let ALL = [];
 let activeFilters = { host: null, microbe: null, res: null, country: null, design: null };
 let groupMode = 'none';
 let currentView = 'factors';
+let currentRows = [];
 
 function fieldSafe(v){ return (v===undefined||v===null||v==='') ? '—' : v; }
 function resultFormat(f){
@@ -246,7 +256,7 @@ function resultFormat(f){
 }
 
 async function loadData(){
-  const res = await fetch('Data/factors.json');
+  const res = await fetch('data/factors.json');
   const json = await res.json();
   ALL = json.factors || [];
   document.getElementById('loadStat').textContent = ALL.length.toLocaleString() + ' factors · ' + uniqueSorted('ref_bibtex_key').length.toLocaleString() + ' references';
@@ -350,6 +360,7 @@ function render(){
   const q = document.getElementById('searchInput').value.trim();
   let rows = ALL.filter(f => matches(f, q));
   rows = sortRows(rows);
+  currentRows = rows;
   document.getElementById('resultCount').textContent = rows.length.toLocaleString();
   document.getElementById('resultLabel').textContent = 'factors';
 
@@ -403,6 +414,7 @@ function renderReferences(){
     list = list.filter(r => [r.title, r.bibtex, r.country].filter(Boolean).join(' ').toLowerCase().includes(q));
   }
   list.sort((a,b) => (a.bibtex||'').localeCompare(b.bibtex||''));
+  currentRows = list;
 
   document.getElementById('resultCount').textContent = list.length.toLocaleString();
   document.getElementById('resultLabel').textContent = 'references';
@@ -501,6 +513,43 @@ document.getElementById('tabRefs').addEventListener('click', () => {
   document.getElementById('groupToggleWrap').style.display = 'none';
   document.getElementById('sortSel').style.display = 'none';
   render();
+});
+
+function csvEscape(v){
+  if(v===undefined||v===null) return '';
+  const s = String(v);
+  if(/[",\n\r]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+
+function downloadCsv(filename, headers, rows){
+  const lines = [headers.map(csvEscape).join(',')];
+  rows.forEach(r => { lines.push(headers.map(h => csvEscape(r[h])).join(',')); });
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+const FACTOR_EXPORT_HEADERS = [
+  'id_res_out','id_reference','ref_rwid','ref_doi','ref_pmid','ref_bibtex_key','ref_title',
+  'country','study_design','id_factor','factor_title','factor_description','factor_group',
+  'comparator_group','host_level_01','host_level_02','stage_allocate','stage_observe',
+  'resistance_class','resistance','microbe_level_01','microbe_level_02',
+  'contable_a','contable_b','contable_c','contable_d','prevtable_a','prevtable_b','prevtable_c','prevtable_d',
+  'table_n_exp','table_n_ref','odds_ratio','odds_ratio_lo','odds_ratio_up','odds_ratio_sig','odds_ratio_confidence'
+];
+const REFERENCE_EXPORT_HEADERS = ['bibtex','title','country','design','doi','rwid','count'];
+
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  if(currentRows.length === 0){ return; }
+  if(currentView === 'references'){
+    downloadCsv('cedar_references_export.csv', REFERENCE_EXPORT_HEADERS, currentRows);
+  } else {
+    downloadCsv('cedar_factors_export.csv', FACTOR_EXPORT_HEADERS, currentRows);
+  }
 });
 
 loadData();
